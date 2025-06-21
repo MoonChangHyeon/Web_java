@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/layout}">
+
+<th:block layout:fragment="css">
+    <link rel="stylesheet" th:href="@{/assets/libs/datatables.net-bs5/css/dataTables.bootstrap5.min.css}">
+</th:block>
+
+<th:block layout:fragment="content">
+
+    <div class="mb-4">
+        <h4 class="fw-semibold">룰 검색</h4>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/}">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">룰 검색</li>
+            </ol>
+        </nav>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">룰 이름으로 외부 표준 검색하기</h5>
+                    <p class="card-subtitle mb-3">
+                        검색할 룰 이름(Internal Category)의 일부를 입력하세요.
+                    </p>
+                    <form th:action="@{/}" method="get" class="d-flex gap-2">
+                        <input type="text" name="keyword" class="form-control" placeholder="예: 'Code Injection'" th:value="${searchKeyword}" />
+                        <button type="submit" class="btn btn-primary">검색</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card" th:if="${searchResult != null and searchResult.uniqueRuleCount > 0}">
+                <div class="card-body">
+                    <h5 class="card-title">검색 통계 요약</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p>
+                                '<strong th:text="${searchResult.searchKeyword}"></strong>'에 대한 검색 결과, 
+                                총 <strong class="text-primary" th:text="${searchResult.uniqueRuleCount}">0</strong>개의 고유한 규칙을 찾았습니다.
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>주요 외부 표준 (상위 5개):</strong>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex justify-content-between align-items-center"
+                                    th:each="stat : ${searchResult.getSortedStandardCounts()}">
+                                    <span th:text="${stat.key}">Standard Name</span>
+                                    <span class="badge bg-primary rounded-pill" th:text="${stat.value} + '회'">14</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div th:class="${selectedRule != null} ? 'col-lg-5' : 'col-lg-12'">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">검색된 규칙 목록</h5>
+                            <div class="table-responsive" th:if="${searchResult != null and not #lists.isEmpty(searchResult.foundRules)}">
+                                <table id="search_results_table" class="table table-sm w-100">
+                                    <thead><tr><th>규칙 이름 (클릭하여 상세 보기)</th></tr></thead>
+                                    <tbody>
+                                        <tr th:each="rule : ${searchResult.foundRules}">
+                                            <td>
+                                                <a th:href="@{/(ruleId=${rule.id}, keyword=${searchKeyword})}" th:text="${rule.ruleName}"></a>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="text-center p-4" th:if="${searchResult == null or #lists.isEmpty(searchResult.foundRules)}">
+                                <p th:if="${searchKeyword}">'<span th:text="${searchKeyword}"></span>'에 대한 검색 결과가 없습니다.</p>
+                                <p th:unless="${searchKeyword}">검색어를 입력하세요.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-7" th:if="${selectedRule != null}">
+                    </div>
+            </div>
+        </div>
+    </div>
+</th:block>
+
+<th:block layout:fragment="script">
+    <script th:src="@{/assets/libs/datatables.net/js/jquery.dataTables.min.js}"></script>
+    <script th:src="@{/assets/js/custom/datatable-initializer.js}"></script>
+</th:block>
+</html>

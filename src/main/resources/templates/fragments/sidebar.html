@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+    <aside class="left-sidebar with-vertical" th:fragment="sidebar">
+        <nav class="sidebar-nav scroll-sidebar" data-simplebar>
+            <ul id="sidebarnav">
+                <li class="nav-small-cap">
+                    <i class="ti ti-dots nav-small-cap-icon fs-4"></i>
+                    <span class="hide-menu">MENU</span>
+                </li>
+
+                <li class="sidebar-item">
+                    <a class="sidebar-link" th:href="@{/}" aria-expanded="false">
+                        <span class="hide-menu">룰 검색</span>
+                    </a>
+                </li>
+                
+                <li class="sidebar-item">
+                    <a class="sidebar-link" th:href="@{/upload}" aria-expanded="false">
+                        <span class="hide-menu">XML 업로드</span>
+                    </a>
+                </li>
+
+                <li class="sidebar-item">
+                    <a class="sidebar-link" th:href="@{/analyzer}" aria-expanded="false">
+                        <span class="hide-menu">룰팩 분석기</span>
+                    </a>
+                </li>
+
+                <li class="sidebar-item">
+                    <a class="sidebar-link" th:href="@{/logs}" aria-expanded="false">
+                        <span class="hide-menu">시스템 로그</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </aside>
+</body>
+</html>

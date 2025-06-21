@@ -1,0 +1,7 @@
+/* /assets/css/custom.css */
+
+/* 사이드바 메뉴 폰트 스타일 조정 */
+.sidebar-nav .hide-menu {
+    font-size: 1rem; /* 기본 폰트 크기로 설정하여 기존보다 키움 (약 16px) */
+    font-weight: 500; /* 폰트를 약간 더 두껍게 설정 */
+}

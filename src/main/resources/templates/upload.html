@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/layout}">
+
+<th:block layout:fragment="content">
+
+    <div class="mb-4">
+        <h4 class="fw-semibold">XML 업로드</h4>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/}">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">XML 업로드</li>
+            </ol>
+        </nav>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <ul class="nav nav-tabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="tab" href="#file-upload" role="tab">
+                        <span>파일 업로드</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#zip-upload" role="tab">
+                        <span>폴더(ZIP) 업로드</span>
+                    </a>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <div class="tab-pane active p-3" id="file-upload" role="tabpanel">
+                    <h5 class="card-title">개별 XML 파일 업로드</h5>
+                    <p class="card-subtitle mb-3">
+                        `externalmetadata.xml` 파일을 직접 선택하여 업로드합니다.
+                    </p>
+                    <div th:if="${message}" th:classappend="${message.startsWith('경고:') or message.startsWith('❌')} ? 'alert-warning' : 'alert-success'" class="alert" role="alert">
+                        <span th:text="${message}"></span>
+                    </div>
+                    <form th:action="@{/upload}" method="post" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="file" class="form-label">XML 파일 선택</label>
+                            <input class="form-control" type="file" id="file" name="file" required accept=".xml">
+                        </div>
+                        <button type="submit" class="btn btn-primary">업로드</button>
+                    </form>
+                </div>
+
+                <div class="tab-pane p-3" id="zip-upload" role="tabpanel">
+                     <h5 class="card-title">폴더(ZIP) 업로드</h5>
+                    <p class="card-subtitle mb-3">
+                        `externalmetadata.xml` 파일들을 포함한 폴더를 ZIP으로 압축하여 업로드하세요. 하위 폴더까지 모두 검색합니다.
+                    </p>
+                    <div th:if="${zip_message}" class="alert alert-danger" role="alert">
+                         <span th:text="${zip_message}"></span>
+                    </div>
+                    <div th:if="${zip_messages}" class="alert" 
+                         th:classappend="${#lists.stream(zip_messages).anyMatch(m -> m.startsWith('❌'))} ? 'alert-warning' : 'alert-success'">
+                        <p class="fw-bold">처리 결과:</p>
+                        <ul>
+                            <li th:each="msg : ${zip_messages}" th:text="${msg}"></li>
+                        </ul>
+                    </div>
+                    <form th:action="@{/upload-zip}" method="post" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="zipfile" class="form-label">ZIP 파일 선택</label>
+                            <input class="form-control" type="file" id="zipfile" name="zipfile" required accept=".zip">
+                        </div>
+                        <button type="submit" class="btn btn-info">ZIP 업로드</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</th:block>
+
+</html>

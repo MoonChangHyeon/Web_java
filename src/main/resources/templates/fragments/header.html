@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+    <header class="topbar" th:fragment="header">
+        <div class="with-vertical">
+            <nav class="navbar navbar-expand-lg p-0">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link sidebartoggler" id="headerCollapse" href="javascript:void(0)">
+                            <iconify-icon icon="solar:list-bold-duotone" class="fs-6"></iconify-icon>
+                        </a>
+                    </li>
+                </ul>
+                <div class="d-block d-lg-none">
+                    <img th:src="@{/assets/images/logos/logo-light.svg}" class="dark-logo" alt="Logo-Dark" />
+                    <img th:src="@{/assets/images/logos/logo-dark.svg}" class="light-logo" alt="Logo-light" />
+                </div>
+                <a class="navbar-toggler p-0 border-0" href="javascript:void(0)" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <iconify-icon icon="solar:menu-dots-bold-duotone" class="fs-6"></iconify-icon>
+                </a>
+            </nav>
+        </div>
+    </header>
+</body>
+</html>

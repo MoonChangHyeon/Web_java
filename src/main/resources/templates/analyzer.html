@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/layout}">
+
+<head>
+    <title>룰팩 분석기</title>
+</head>
+
+<th:block layout:fragment="css">
+    <link rel="stylesheet" th:href="@{/assets/libs/datatables.net-bs5/css/dataTables.bootstrap5.min.css}">
+</th:block>
+
+<th:block layout:fragment="content">
+
+    <div class="mb-4">
+        <h4 class="fw-semibold">룰팩 비교 분석기</h4>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/}">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">룰팩 분석기</li>
+            </ol>
+        </nav>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">룰팩 선택</h5>
+            <p class="card-subtitle mb-3">비교하고 싶은 룰팩 2개를 선택하세요.</p>
+            
+            <div th:if="${error}" class="alert alert-danger" role="alert">
+                <span th:text="${error}"></span>
+            </div>
+
+            <form th:action="@{/analyzer}" method="post">
+                <div class="form-group mb-3">
+                    <div th:each="pack : ${rule_packs}" class="form-check">
+                        <input class="form-check-input" type="checkbox" name="packs_to_compare" th:value="${pack.id}" th:id="'pack_' + ${pack.id}" />
+                        <label class="form-check-label" th:for="'pack_' + ${pack.id}">
+                            <strong th:text="${pack.packName}">Pack Name</strong>
+                            (<span th:text="'Version: ' + ${pack.packVersion}"></span>)
+                            - <small class="text-muted" th:text="${pack.location}"></small>
+                        </label>
+                    </div>
+                    <div th:if="${#lists.isEmpty(rule_packs)}">
+                        <p>분석할 룰팩이 없습니다. <a th:href="@{/upload}">XML 업로드</a> 페이지에서 먼저 룰팩을 업로드해주세요.</p>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" th:unless="${#lists.isEmpty(rule_packs)}">비교 분석 시작</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card" th:if="${results}">
+        <div class="card-body">
+            <h5 class="card-title">분석 결과 요약</h5>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <strong>룰팩 A:</strong> <span th:text="${results.packA.packName} + ' (v' + ${results.packA.packVersion} + ')'"></span><br/>
+                    <strong>총 규칙 수:</strong> <span th:text="${results.getPackATotalRules()} + ' 개'"></span>
+                </div>
+                <div class="col-md-6">
+                    <strong>룰팩 B:</strong> <span th:text="${results.packB.packName} + ' (v' + ${results.packB.packVersion} + ')'"></span><br/>
+                    <strong>총 규칙 수:</strong> <span th:text="${results.getPackBTotalRules()} + ' 개'"></span>
+                </div>
+            </div>
+            
+            <div>
+                <ul class="nav nav-tabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#rulesA" role="tab">
+                            <span>룰팩 A에만 있는 규칙 (<span th:text="${#sets.size(results.onlyInA)}">0</span>개)</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#rulesB" role="tab">
+                            <span>룰팩 B에만 있는 규칙 (<span th:text="${#sets.size(results.onlyInB)}">0</span>개)</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#rulesCommon" role="tab">
+                            <span>공통 규칙 (<span th:text="${#sets.size(results.commonRules)}">0</span>개)</span>
+                        </a>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane active" id="rulesA" role="tabpanel">
+                        <div class="p-3">
+                            <table id="rules_table_a" class="table table-sm table-striped table-bordered w-100">
+                                <thead><tr><th>규칙 이름</th></tr></thead>
+                                <tbody>
+                                    <tr th:each="rule : ${results.onlyInA}"><td th:text="${rule}"></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane p-3" id="rulesB" role="tabpanel">
+                        <table id="rules_table_b" class="table table-sm table-striped table-bordered w-100">
+                            <thead><tr><th>규칙 이름</th></tr></thead>
+                            <tbody>
+                                <tr th:each="rule : ${results.onlyInB}"><td th:text="${rule}"></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="tab-pane p-3" id="rulesCommon" role="tabpanel">
+                        <table id="rules_table_common" class="table table-sm table-striped table-bordered w-100">
+                            <thead><tr><th>규칙 이름</th></tr></thead>
+                            <tbody>
+                                <tr th:each="rule : ${results.commonRules}"><td th:text="${rule}"></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</th:block>
+
+<th:block layout:fragment="script">
+    <script th:src="@{/assets/libs/datatables.net/js/jquery.dataTables.min.js}"></script>
+    <script th:src="@{/assets/js/custom/datatable-initializer.js}"></script>
+</th:block>
+
+</html>

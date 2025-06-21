@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html
+  lang="ko"
+  xmlns:th="http://www.thymeleaf.org"
+  xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+  layout:decorate="~{layouts/layout}"
+>
+  <head>
+    <title>Analyzer - Comparison Result</title>
+  </head>
+  <body>
+    <div layout:fragment="content">
+      <div class="container-fluid">
+        <div class="card">
+          <div class="card-body">
+            <h4 class="card-title">비교 분석 결과</h4>
+            <h6 class="card-subtitle mb-4" th:if="${fileAName != null}">
+              <span class="text-primary" th:text="${fileAName}"></span> 와
+              <span class="text-success" th:text="${fileBName}"></span> 비교
+            </h6>
+            <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+            
+            <div th:if="${result != null}">
+              <h5 class="mt-4">공통 규칙 (<span th:text="${result.commonRules.size()}">0</span>개)</h5>
+              <div class="table-responsive">
+                <table class="table table-bordered">
+                  <thead><tr><th>Rule ID</th><th>Name</th></tr></thead>
+                  <tbody>
+                    <tr th:each="rule : ${result.commonRules}">
+                      <td th:text="${rule.get('RuleID')}"></td>
+                      <td th:text="${rule.get('Name')}"></td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(result.commonRules)}"><td colspan="2">내용 없음</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <h5 class="mt-4">원본(AS-IS)에만 있는 규칙 (<span th:text="${result.onlyInA.size()}">0</span>개)</h5>
+              <div class="table-responsive">
+                <table class="table table-bordered">
+                  <thead><tr><th>Rule ID</th><th>Name</th></tr></thead>
+                  <tbody>
+                    <tr th:each="rule : ${result.onlyInA}">
+                      <td th:text="${rule.get('RuleID')}"></td>
+                      <td th:text="${rule.get('Name')}"></td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(result.onlyInA)}"><td colspan="2">내용 없음</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <h5 class="mt-4">새로운(TO-BE)에만 있는 규칙 (<span th:text="${result.onlyInB.size()}">0</span>개)</h5>
+              <div class="table-responsive">
+                <table class="table table-bordered">
+                  <thead><tr><th>Rule ID</th><th>Name</th></tr></thead>
+                  <tbody>
+                    <tr th:each="rule : ${result.onlyInB}">
+                      <td th:text="${rule.get('RuleID')}"></td>
+                      <td th:text="${rule.get('Name')}"></td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(result.onlyInB)}"><td colspan="2">내용 없음</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

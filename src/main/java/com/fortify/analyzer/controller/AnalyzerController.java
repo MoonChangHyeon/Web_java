@@ -10,6 +10,11 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
+import com.fortify.analyzer.dto.XmlComparisonResultDto;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/analyzer")
@@ -52,9 +57,20 @@ public class AnalyzerController {
         }
     }
 
-    @PostMapping("/crawl/execute")
-    public ResponseEntity<String> startCrawling() {
-        crawlService.updatePagesAndExecuteCrawler();
-        return ResponseEntity.ok("Page update and crawling process has been started in the background.");
+    @PostMapping("/compare-xml")
+    public String compareXmlFiles(@RequestParam("fileA") MultipartFile fileA,
+                                  @RequestParam("fileB") MultipartFile fileB,
+                                  Model model) {
+        try {
+            XmlComparisonResultDto result = analyzerService.compareExternalMetadata(fileA, fileB);
+            model.addAttribute("result", result);
+            model.addAttribute("fileAName", fileA.getOriginalFilename());
+            model.addAttribute("fileBName", fileB.getOriginalFilename());
+        } catch (Exception e) {
+            // 예외 처리 로직 (예: 에러 페이지로 리디렉션 또는 메시지 전달)
+            logger.error("XML comparison failed", e);
+            model.addAttribute("error", "XML 파일을 비교하는 중 오류가 발생했습니다: " + e.getMessage());
+        }
+        return "analyzer-results"; // 결과를 보여줄 새로운 HTML 페이지
     }
 }

@@ -1,7 +1,7 @@
 """
 Fortify 취약점 카테고리 크롤러입니다.
 카테고리 설명, 취약점 목록, 상세 데이터를 스크래핑하고,
-카테고리별 CSV 및 XML 파일로 저장합니다.
+카테고리별 XML 및 JSON 파일로 저장합니다.
 --output-dir 인자를 통해 결과 저장 경로를 외부에서 전달받습니다.
 """
 
@@ -13,7 +13,8 @@ import csv
 from xml.dom import minidom
 import xml.etree.ElementTree as ET
 import json
-import argparse  # argparse 라이브러리 추가
+import argparse
+from collections import defaultdict
 
 import requests
 from bs4 import BeautifulSoup
@@ -54,7 +55,12 @@ def get_soup(url, params=None):
 
 def scrape_list_page(kingdom, page):
     """취약점 목록 페이지에서 기본 정보를 스크래핑합니다."""
-    soup = get_soup(f"{BASE_URL}/ko/vulncat/{kingdom.replace(' ', '%20')}", params={'page': page})
+    # ### URL 생성 방식 수정 ###
+    # 경로에 카테고리를 넣는 대신, 'kingdom' 쿼리 파라미터로 전달합니다.
+    url = f"{BASE_URL}/ko/weakness"
+    params = {'kingdom': kingdom, 'page': page}
+    soup = get_soup(url, params=params)
+
     if not soup:
         return []
 
@@ -195,18 +201,22 @@ def main(output_dir):
 
     for kingdom in selected_kingdoms:
         logger.info(f"\n>>>>>>>>> 카테고리: {kingdom} <<<<<<<<<")
-        initial_last_page = LAST_PAGES.get(kingdom, 1)
         
         # 실제 마지막 페이지 번호 확인
-        soup = get_soup(f"{BASE_URL}/ko/vulncat/{kingdom.replace(' ', '%20')}")
-        if not soup: continue
+        url = f"{BASE_URL}/ko/weakness"
+        params = {'kingdom': kingdom}
+        soup = get_soup(url, params=params)
+
+        if not soup: 
+            logger.warning(f"카테고리 '{kingdom}'의 첫 페이지를 불러올 수 없습니다. 건너뜁니다.")
+            continue
         
         last_page_tag = soup.select_one('ul.pagination li.pager-last a')
-        actual_last = int(last_page_tag['href'].split('=')[-1]) if last_page_tag else initial_last_page
+        actual_last = int(last_page_tag['href'].split('=')[-1]) if last_page_tag else 1
         
-        logger.info(f"확인된 마지막 페이지: {actual_last}")
+        logger.info(f"'{kingdom}' 카테고리의 총 페이지 수: {actual_last}")
 
-        for page_num in range(1, actual_last + 1):
+        for page_num in range(actual_last): # 페이지는 0부터 시작
             logger.info(f"[{kingdom}] 목록 페이지 스크래핑 중... (페이지 {page_num})")
             vulns = scrape_list_page(kingdom, page_num)
             for i, v in enumerate(vulns, 1):
@@ -222,12 +232,12 @@ def main(output_dir):
             data = [item for item in all_detailed_results if item['kingdom'] == kingdom]
             if data:
                 name = kingdom.replace(" ", "_").replace("&", "and")
-                csv_path = os.path.join(JSON_DIR, f"{name}.csv") # CSV도 JSON 폴더에 저장
+                # csv_path = os.path.join(JSON_DIR, f"{name}.csv") # CSV도 JSON 폴더에 저장
                 xml_path = os.path.join(XML_DIR, f"{name}.xml")
                 json_path = os.path.join(JSON_DIR, f"{name}.json")
                 
                 # save_as_csv(data, csv_path) # 필요시 주석 해제
-                save_as_xml(data, xml_path, kingdom_name=kingdom, kingdom_desc=kingdom_descriptions[kingdom])
+                save_as_xml(data, xml_path, kingdom_name=kingdom, kingdom_desc=kingdom_descriptions.get(kingdom, "설명 없음"))
                 convert_xml_file_to_json(xml_path, json_path)
 
 

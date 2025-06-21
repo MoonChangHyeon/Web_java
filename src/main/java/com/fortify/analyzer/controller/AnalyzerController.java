@@ -13,6 +13,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.http.HttpHeaders; 
+import org.springframework.http.HttpStatus; 
+import org.springframework.http.MediaType; 
+import org.springframework.http.ResponseEntity; 
+import org.springframework.web.bind.annotation.GetMapping; 
+import org.springframework.web.bind.annotation.RequestMapping; 
 
 import java.util.List;
 
@@ -23,6 +29,10 @@ public class AnalyzerController {
     private final RulePackRepository rulePackRepository;
 
     private final AnalyzerService analyzerService;
+
+    public AnalyzerController(AnalyzerService analyzerService) {
+        this.analyzerService = analyzerService;
+    }
     
     // GET /analyzer 요청을 처리합니다. (페이지 최초 로딩)
     @GetMapping("/analyzer")
@@ -57,5 +67,29 @@ public class AnalyzerController {
         model.addAttribute("results", results);
 
         return "analyzer"; // templates/analyzer.html 파일을 다시 렌더링
+    }
+
+    @GetMapping("/api/analysis/summary")
+    public ResponseEntity<String> getAnalysisSummary() {
+        try {
+            String jsonContent = analyzerService.getAnalysisResultJson("summary_by_language.json");
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            return new ResponseEntity<>(jsonContent, headers, HttpStatus.OK);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\": \"Could not read summary file.\"}");
+        }
+    }
+
+    @GetMapping("/api/analysis/detail")
+    public ResponseEntity<String> getAnalysisDetail() {
+        try {
+            String jsonContent = analyzerService.getAnalysisResultJson("detail_by_language.json");
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            return new ResponseEntity<>(jsonContent, headers, HttpStatus.OK);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\": \"Could not read detail file.\"}");
+        }
     }
 }

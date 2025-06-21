@@ -20,9 +20,8 @@ public class CrawlController {
     @PostMapping("/execute")
     @ResponseBody
     public ResponseEntity<String> startCrawling() {
-        // 비동기 메서드 호출
-        crawlService.runCrawlingAndAnalysis();
-        // 사용자에게 즉시 응답 반환
-        return ResponseEntity.ok("Crawling and analysis process has been started in the background.");
+        // 새로 만든 메인 서비스 메서드 호출
+        crawlService.updatePagesAndExecuteCrawler(); 
+        return ResponseEntity.ok("Page update and crawling process has been started in the background.");
     }
 }

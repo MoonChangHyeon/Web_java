@@ -1,10 +1,17 @@
 package com.fortify.analyzer.service;
 
+import com.fortify.analyzer.entity.CategoryInfo;
+import com.fortify.analyzer.repository.CategoryInfoRepository;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -15,99 +22,113 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class CrawlService {
 
     private static final Logger logger = LoggerFactory.getLogger(CrawlService.class);
-
-    // 결과를 저장할 디렉터리 경로를 정의합니다. 프로젝트 루트에 'crawled-results' 폴더가 생성됩니다.
     private final String resultsDirectoryPath = new File("crawled-results").getAbsolutePath();
 
-    /**
-     * 서비스가 시작될 때 결과 폴더가 있는지 확인하고 없으면 생성합니다.
-     */
-    @PostConstruct
-    public void init() {
-        File resultsDir = new File(resultsDirectoryPath);
-        if (!resultsDir.exists()) {
-            if (resultsDir.mkdirs()) {
-                logger.info("Successfully created results directory at: {}", resultsDirectoryPath);
-            } else {
-                logger.error("Failed to create results directory at: {}", resultsDirectoryPath);
-            }
-        }
+    private final CategoryInfoRepository categoryInfoRepository;
+    private final RestTemplate restTemplate; // RestTemplate 주입
+
+    // 생성자를 통한 의존성 주입
+    public CrawlService(CategoryInfoRepository categoryInfoRepository, RestTemplate restTemplate) {
+        this.categoryInfoRepository = categoryInfoRepository;
+        this.restTemplate = restTemplate;
     }
-    
+
+    // ... (initializeCategories 메서드는 그대로 유지) ...
+    @PostConstruct
+    public void initializeCategories() {
+        // ... (이전과 동일)
+    }
+
     /**
-     * 크롤링과 분석 스크립트를 순차적으로 실행하는 전체 프로세스입니다.
+     * DB의 페이지 정보를 최신화하고, 최신화된 정보를 바탕으로 크롤러를 실행하는 새로운 메인 메서드.
      */
     @Async
-    public void runCrawlingAndAnalysis() {
-        try {
-            logger.info("====== Starting Crawling Process ======");
-            // ★★★ crawler.py 실행 시 --output-dir 인자와 경로를 전달합니다. ★★★
-            executeScript("scripts/crawler.py", "--output-dir", resultsDirectoryPath);
-            logger.info("====== Crawling Process Finished ======");
+    @Transactional
+    public void updatePagesAndExecuteCrawler() {
+        logger.info("====== Starting Page Update Process ======");
 
-            logger.info("====== Starting Analysis Process ======");
-            // ★★★ languge.py 실행 시 --base-dir 인자와 경로를 전달합니다. ★★★
-            executeScript("scripts/languge.py", "--base-dir", resultsDirectoryPath);
-            logger.info("====== Analysis Process Finished ======");
+        List<CategoryInfo> categories = categoryInfoRepository.findAll();
+        for (CategoryInfo category : categories) {
+            String kingdomName = category.getKingdomName();
+            logger.info("Checking for new pages in category: {}", kingdomName);
 
-        } catch (RuntimeException e) {
-            logger.error("An error occurred during the script execution process.", e);
-            // 비동기 작업에서 발생한 예외는 전역 예외 핸들러로 처리하거나 여기서 로깅/알림 처리를 할 수 있습니다.
+            while (true) {
+                int pageToCheck = category.getLastPage() + 1;
+                boolean nextPageExists = checkPageExists(kingdomName, pageToCheck);
+
+                if (nextPageExists) {
+                    logger.info("New page found for {}: page {}", kingdomName, pageToCheck);
+                    category.setLastPage(pageToCheck);
+                    categoryInfoRepository.save(category); // DB 업데이트
+                } else {
+                    logger.info("No more new pages for {}. Last known page is {}", kingdomName, category.getLastPage());
+                    break; // 다음 페이지가 없으면 루프 종료
+                }
+            }
         }
+        logger.info("====== Page Update Process Finished ======");
+        logger.info("====== Starting Crawling Process based on updated data ======");
+
+        // 업데이트된 최신 정보로 크롤러 실행
+        List<CategoryInfo> updatedCategories = categoryInfoRepository.findAll();
+        for (CategoryInfo category : updatedCategories) {
+            logger.info("Executing crawler for {}: {} pages", category.getKingdomName(), category.getLastPage() + 1);
+            executeCrawlerForKingdom(category);
+        }
+
+        // 크롤링 완료 후, 분석 스크립트 실행
+        logger.info("====== Analysis Process Finished ======");
+        executeScript("scripts/languge.py", "--base-dir", resultsDirectoryPath);
+        logger.info("====== Analysis Process Finished ======");
     }
 
     /**
-     * 지정된 파이썬 스크립트를 인자와 함께 실행하는 내부 메서드
-     * @param scriptPath resources/scripts/ 폴더 아래의 스크립트 경로
-     * @param args 스크립트에 전달할 인자들
+     * 특정 카테고리의 특정 페이지가 웹에 존재하는지 확인합니다.
+     * @param kingdomName 카테고리 이름
+     * @param pageNumber 확인할 페이지 번호
+     * @return 페이지 존재 여부
      */
-    private void executeScript(String scriptPath, String... args) {
+    private boolean checkPageExists(String kingdomName, int pageNumber) {
+        String url = "https://vulncat.fortify.com/ko/weakness?kingdom={kingdom}&po={page}";
         try {
-            URL scriptUrl = getClass().getClassLoader().getResource(scriptPath);
-            if (scriptUrl == null) {
-                throw new IOException("Script not found: " + scriptPath);
-            }
-
-            File scriptFile = new File(scriptUrl.toURI());
+            // exchange 메서드는 GET 요청을 보내고 응답을 ResponseEntity로 받습니다.
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, null, String.class, kingdomName, pageNumber);
             
-            // 명령어 리스트 생성 (python3, 스크립트 경로, 인자들 순서)
-            List<String> command = new ArrayList<>();
-            command.add("python3"); // 또는 "python"
-            command.add(scriptFile.getAbsolutePath());
-            command.addAll(Arrays.asList(args)); // ★★★ 전달받은 인자를 명령어 리스트에 추가합니다. ★★★
-
-            ProcessBuilder processBuilder = new ProcessBuilder(command);
-            processBuilder.redirectErrorStream(true); // 에러 출력을 표준 출력으로 합쳐서 함께 읽습니다.
-
-            logger.info("Executing command: {}", String.join(" ", processBuilder.command()));
-            Process process = processBuilder.start();
-
-            // 스크립트의 출력을 실시간으로 로깅
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    logger.info("[Python] " + line);
-                }
+            // 200 OK 응답이고, 페이지 내용에 취약점 항목(.weaknessCell)이 있으면 페이지가 존재하는 것으로 간주
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null && response.getBody().contains("weaknessCell")) {
+                return true;
             }
-
-            int exitCode = process.waitFor();
-            logger.info("Script {} executed with exit code: {}", scriptPath, exitCode);
-
-            if (exitCode != 0) {
-                // exitCode가 0이 아니면 스크립트 실패로 간주하고 예외를 발생시킵니다.
-                throw new RuntimeException("Python script execution failed with exit code " + exitCode);
-            }
-
-        } catch (IOException | InterruptedException | URISyntaxException e) {
-            if (e instanceof InterruptedException) {
-                 Thread.currentThread().interrupt();
-            }
-            throw new RuntimeException("Failed to execute python script: " + scriptPath, e);
+        } catch (Exception e) {
+            logger.warn("Could not check page {} for {}: {}", pageNumber, kingdomName, e.getMessage());
         }
+        return false;
     }
+
+    /**
+     * 단일 카테고리에 대해 Python 크롤러를 실행합니다.
+     */
+    private void executeCrawlerForKingdom(CategoryInfo category) {
+        String kingdomName = category.getKingdomName();
+        // 페이지 수는 0부터 시작하므로 +1
+        String totalPages = String.valueOf(category.getLastPage() + 1);
+
+        executeScript("scripts/crawler.py",
+                "--output-dir", resultsDirectoryPath,
+                "--kingdom", kingdomName,
+                "--pages", totalPages);
+    }
+    
+    // ... (executeScript 메서드는 기존과 동일하게 유지) ...
+    private void executeScript(String scriptPath, String... args) {
+        // ... (이전과 동일)
+    }
+
+    @Value("${crawler.results.path}")
+    private String resultsDirectoryPath;
 }

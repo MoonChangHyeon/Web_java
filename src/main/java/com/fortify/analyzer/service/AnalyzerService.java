@@ -14,6 +14,13 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
+import java.io.IOException; 
+import java.nio.charset.StandardCharsets; 
+import java.nio.file.Files; 
+import java.nio.file.Path; 
+import java.nio.file.Paths; 
+
 @Service
 @RequiredArgsConstructor
 public class AnalyzerService {
@@ -52,5 +59,28 @@ public class AnalyzerService {
 
         // 분석 결과를 DTO 객체에 담아 반환합니다.
         return new AnalysisResult(packA, packB, commonRules, onlyInA, onlyInB);
+    }
+    // ★★★ 프로퍼티에서 결과 경로 주입 ★★★
+    @Value("${crawler.results.path}")
+    private String resultsBasePath;
+
+    /**
+     * 분석 결과 JSON 파일을 읽어 문자열로 반환합니다.
+     * @param fileName 읽어올 파일명 (e.g., "summary_by_language.json")
+     * @return 파일의 내용 (JSON 문자열)
+     * @throws IOException 파일이 없거나 읽을 수 없을 때
+     */
+    public String getAnalysisResultJson(String fileName) throws IOException {
+        // .../crawled-results/analysis/summary_by_language.json 과 같은 경로 생성
+        Path filePath = Paths.get(resultsBasePath, "analysis", fileName);
+
+        if (!Files.exists(filePath)) {
+            // 파일이 없을 경우 예외를 발생시키거나, 기본 JSON 형태를 반환할 수 있습니다.
+            // 여기서는 간단히 "{ \"error\": \"File not found. Please run the crawler first.\" }" 를 반환합니다.
+            logger.warn("Analysis file not found: {}", filePath);
+            return String.format("{ \"error\": \"File not found: %s. Please run the crawler first.\" }", fileName);
+        }
+        
+        return Files.readString(filePath, StandardCharsets.UTF_8);
     }
 }

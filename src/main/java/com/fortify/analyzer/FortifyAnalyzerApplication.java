@@ -1,8 +1,10 @@
-package com.fortify.analyzer; // <-- 이 부분이 정확해야 합니다.
+package com.fortify.analyzer;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableAsync;
 
+@EnableAsync
 @SpringBootApplication
 public class FortifyAnalyzerApplication {
 

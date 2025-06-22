@@ -4,18 +4,20 @@
       lang="en" dir="ltr" data-bs-theme="light" data-color-theme="Blue_Theme" data-layout="vertical">
 
 <head>
-    <meta charset="UTF-8" />
+    <title layout:title-pattern="$LAYOUT_TITLE - $CONTENT_TITLE">Modernize</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="handheldfriendly" content="true" />
+    <meta name="MobileOptimized" content="width" />
+    <meta name="description" content="Mordenize" />
+    <meta name="author" content="" />
+    <meta name="keywords" content="Mordenize" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <link rel="shortcut icon" type="image/png" th:href="@{/assets/images/logos/favicon.png}" />
-
+    <link rel="shortcut icon" type="image/png" href="https://demos.adminmart.com/premium/bootstrap/modernize-bootstrap/package/dist/images/logos/favicon.ico" />
+    
     <link rel="stylesheet" th:href="@{/assets/css/styles.css}" />
     
-    <link rel="stylesheet" th:href="@{/assets/css/custom.css}" />
-    <th:block layout:fragment="css"></th:block>
-    
-    <title>Fortify Web Analyzer</title>
+    <link rel="stylesheet" th:href="@{/assets/css/layout-fix.css}" />
 </head>
 
 <body data-sidebartype="full">

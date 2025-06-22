@@ -11,9 +11,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
+import java.util.Map;
 
 @Controller
-@RequestMapping("/crawler") // 이 컨트롤러의 모든 요청은 /crawler 로 시작합니다.
+@RequestMapping("/crawler")
 public class CrawlController {
 
     private final CrawlService crawlService;
@@ -24,21 +25,52 @@ public class CrawlController {
         this.analyzerService = analyzerService;
     }
 
-    // 1. 크롤러 페이지를 보여주는 메서드
     @GetMapping("")
     public String crawlerPage() {
-        return "crawler"; // templates/crawler.html 파일을 의미
+        return "crawler";
     }
 
-    // 2. 크롤러 실행을 시작하는 메서드
-    @PostMapping("/execute")
+    // --- 작업 시작 API ---
+    @PostMapping("/execute-crawling")
     @ResponseBody
     public ResponseEntity<String> startCrawling() {
-        crawlService.updatePagesAndExecuteCrawler();
-        return ResponseEntity.ok("Page update and crawling process has been started in the background.");
+        crawlService.startCrawlingProcess();
+        return ResponseEntity.ok("Crawling process start requested.");
     }
 
-    // 3. 분석 결과 (요약) API
+    @PostMapping("/execute-analysis")
+    @ResponseBody
+    public ResponseEntity<String> startAnalysis() {
+        crawlService.startAnalysisProcess();
+        return ResponseEntity.ok("Analysis process start requested.");
+    }
+    
+    // --- 작업 중지 API ---
+    @PostMapping("/stop-crawling")
+    @ResponseBody
+    public ResponseEntity<String> stopCrawling() {
+        crawlService.stopCrawlingProcess();
+        return ResponseEntity.ok("Crawling process stop requested.");
+    }
+
+    @PostMapping("/stop-analysis")
+    @ResponseBody
+    public ResponseEntity<String> stopAnalysis() {
+        crawlService.stopAnalysisProcess();
+        return ResponseEntity.ok("Analysis process stop requested.");
+    }
+
+    // --- 상태 조회 API ---
+    @GetMapping("/status")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> getStatus() {
+        return ResponseEntity.ok(crawlService.getTasksStatus());
+    }
+
+    /**
+     * 요약 분석 결과 JSON을 반환하는 API입니다.
+     * @return 요약 JSON 데이터를 담은 ResponseEntity
+     */
     @GetMapping("/api/analysis/summary")
     @ResponseBody
     public ResponseEntity<String> getAnalysisSummary() {
@@ -52,7 +84,10 @@ public class CrawlController {
         }
     }
 
-    // 4. 분석 결과 (상세) API
+    /**
+     * 상세 분석 결과 JSON을 반환하는 API입니다.
+     * @return 상세 JSON 데이터를 담은 ResponseEntity
+     */
     @GetMapping("/api/analysis/detail")
     @ResponseBody
     public ResponseEntity<String> getAnalysisDetail() {

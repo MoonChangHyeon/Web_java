@@ -6,11 +6,13 @@ import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
@@ -42,15 +44,17 @@ public class CrawlService {
 
     private final CategoryInfoRepository categoryInfoRepository;
     private final RestTemplate restTemplate;
+    private final CrawlService self; // AOP 프록시를 통한 호출을 위해 자신을 주입받습니다.
     
     // 실행 중인 비동기 작업을 저장하는 Map
     private final Map<String, Future<?>> runningTasks = new ConcurrentHashMap<>();
     // 작업별 상태 메시지를 저장하는 Map
     private final Map<String, String> taskStatusMessages = new ConcurrentHashMap<>();
 
-    public CrawlService(CategoryInfoRepository categoryInfoRepository, RestTemplate restTemplate) {
+    public CrawlService(CategoryInfoRepository categoryInfoRepository, RestTemplate restTemplate, @Lazy CrawlService self) {
         this.categoryInfoRepository = categoryInfoRepository;
         this.restTemplate = restTemplate;
+        this.self = self;
     }
 
     @PostConstruct
@@ -65,7 +69,8 @@ public class CrawlService {
             return;
         }
         taskStatusMessages.put(CRAWLING_TASK, "Crawling process started...");
-        Future<?> future = runCrawlingProcess();
+        // 프록시를 통해 호출하여 @Async와 @Transactional이 적용되도록 합니다.
+        Future<?> future = self.runCrawlingProcess();
         runningTasks.put(CRAWLING_TASK, future);
     }
 
@@ -80,12 +85,22 @@ public class CrawlService {
             return;
         }
         taskStatusMessages.put(ANALYSIS_TASK, "Analysis process started...");
-        Future<?> future = runAnalysisProcess();
+        // 프록시를 통해 호출하여 @Async가 적용되도록 합니다.
+        Future<?> future = self.runAnalysisProcess();
         runningTasks.put(ANALYSIS_TASK, future);
     }
 
     public void stopAnalysisProcess() {
         stopTask(ANALYSIS_TASK);
+    }
+
+    // --- 강제 중지 프로세스 ---
+    public void forceStopCrawlingProcess() {
+        forceStopTask(CRAWLING_TASK);
+    }
+
+    public void forceStopAnalysisProcess() {
+        forceStopTask(ANALYSIS_TASK);
     }
 
     // --- 상태 조회 ---
@@ -129,12 +144,16 @@ public class CrawlService {
             updateStatusMessage(CRAWLING_TASK, "Crawling Finished Successfully.");
         } catch (InterruptedException e) {
             updateStatusMessage(CRAWLING_TASK, "Crawling process was interrupted by user.");
+            // ✨ 트랜잭션을 명시적으로 롤백하도록 설정합니다.
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             Thread.currentThread().interrupt();
         } catch (Exception e) {
             updateStatusMessage(CRAWLING_TASK, "Error during crawling: " + e.getMessage());
             logger.error("Exception in crawling process", e);
         } finally {
             runningTasks.remove(CRAWLING_TASK);
+            // 작업이 종료되었으므로, 최종 IDLE 상태를 모든 클라이언트에게 알립니다.
+            updateStatusMessage(CRAWLING_TASK, taskStatusMessages.getOrDefault(CRAWLING_TASK, "Process finished."));
         }
         return new AsyncResult<>(null);
     }
@@ -154,6 +173,8 @@ public class CrawlService {
             logger.error("Exception in analysis process", e);
         } finally {
             runningTasks.remove(ANALYSIS_TASK);
+            // 작업이 종료되었으므로, 최종 IDLE 상태를 모든 클라이언트에게 알립니다.
+            updateStatusMessage(ANALYSIS_TASK, taskStatusMessages.getOrDefault(ANALYSIS_TASK, "Process finished."));
         }
         return new AsyncResult<>(null);
     }
@@ -170,6 +191,18 @@ public class CrawlService {
             future.cancel(true); // true는 인터럽트를 통해 작업을 중지시킴
             logger.info("{} process cancellation requested.", taskName);
         }
+    }
+
+    private void forceStopTask(String taskName) {
+        logger.warn("Force stopping task: {}", taskName);
+        // 1. 먼저 정상적인 중지를 시도합니다.
+        stopTask(taskName);
+
+        // 2. 작업 맵에서 강제로 제거하여 상태를 초기화합니다.
+        runningTasks.remove(taskName);
+
+        // 3. 상태 메시지를 강제 종료로 업데이트합니다.
+        updateStatusMessage(taskName, "Forcefully stopped by user.");
     }
 
     private String getTaskStatus(String taskName) {

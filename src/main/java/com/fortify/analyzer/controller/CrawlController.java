@@ -60,6 +60,21 @@ public class CrawlController {
         return ResponseEntity.ok("Analysis process stop requested.");
     }
 
+    // --- 작업 강제 중지 API ---
+    @PostMapping("/force-stop-crawling")
+    @ResponseBody
+    public ResponseEntity<String> forceStopCrawling() {
+        crawlService.forceStopCrawlingProcess();
+        return ResponseEntity.ok("Crawling process force-stop requested.");
+    }
+
+    @PostMapping("/force-stop-analysis")
+    @ResponseBody
+    public ResponseEntity<String> forceStopAnalysis() {
+        crawlService.forceStopAnalysisProcess();
+        return ResponseEntity.ok("Analysis process force-stop requested.");
+    }
+
     // --- 상태 조회 API ---
     @GetMapping("/status")
     @ResponseBody

@@ -43,7 +43,7 @@
     </div>
     <div class="dark-transparent sidebartoggler"></div>
 
-    <script th:src="@{/assets/libs/jquery/dist/jquery.min.js}"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script th:src="@{/assets/libs/simplebar/dist/simplebar.min.js}"></script>
     <script th:src="@{/assets/libs/bootstrap/dist/js/bootstrap.bundle.min.js}"></script>
     
@@ -67,6 +67,10 @@
       src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"
     ></script>
     <script th:src="@{/assets/libs/apexcharts/dist/apexcharts.min.js}"></script>
+
+    <!-- WebSocket (SockJS and STOMP) -->
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 
     <th:block layout:fragment="script"></th:block>
 </body>
